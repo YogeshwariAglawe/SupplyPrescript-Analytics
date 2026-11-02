@@ -29,7 +29,7 @@ export default function App() {
         status: data.status,
         confidence: data.confidence,
         estimatedDelay: data.estimated_delay,
-        prescriptions: data.prescriptions || [], // 👈 Backend se aane wali prescriptive recommendations
+        prescriptions: data.prescriptions || [], 
       });
     } catch (err) {
       setError('Backend connection error. Make sure FastAPI server is running.');
@@ -95,7 +95,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🤖 Prescriptive Recommendations Panel */}
+            {/* 🤖 prescriptive recommendations panel */}
             {result.prescriptions && result.prescriptions.length > 0 && (
               <div style={{ marginTop: '24px', backgroundColor: '#0B0F17', padding: '20px', borderRadius: '12px', border: '1px solid #1E293B' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
