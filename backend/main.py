@@ -30,7 +30,7 @@ else:
 class PredictionRequest(BaseModel):
     shipment_id: str
 
-# --- Optimization Audit: Hard Budget Constraint Guard ---
+# Optimization Audit: Hard Budget Constraint Guard
 MAX_ALLOWED_BUDGET = 500.0  # Defined hard budget limit in USD
 
 def audit_prescription_budget(prescriptions: list) -> list:
