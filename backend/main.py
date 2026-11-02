@@ -30,6 +30,29 @@ else:
 class PredictionRequest(BaseModel):
     shipment_id: str
 
+# --- Optimization Audit: Hard Budget Constraint Guard ---
+MAX_ALLOWED_BUDGET = 500.0  # Defined hard budget limit in USD
+
+def audit_prescription_budget(prescriptions: list) -> list:
+    """
+    Audits the prescriptive recommendations to prove that 
+    no action violates the hard budget constraint.
+    """
+    validated_prescriptions = []
+    for rec in prescriptions:
+        cost_val = rec.get("cost_impact", "$0")
+        if isinstance(cost_val, str):
+            clean_cost = float(cost_val.replace("+$", "").replace("$", ""))
+        else:
+            clean_cost = float(cost_val)
+            
+        if clean_cost <= MAX_ALLOWED_BUDGET:
+            validated_prescriptions.append(rec)
+        else:
+            print(f"Audit Warning: Action {rec.get('action_id')} exceeded budget limit and was filtered.")
+            
+    return validated_prescriptions
+
 @app.get("/")
 def read_root():
     return {"status": "SupplyPrescript Prescriptive Engine is active"}
@@ -89,6 +112,9 @@ def predict_delay(data: PredictionRequest):
                 "feasibility": "Optimal"
             }
         ]
+
+    # Apply Optimization Audit Guard
+    prescriptions = audit_prescription_budget(prescriptions)
 
     return {
         "shipment_id": data.shipment_id,

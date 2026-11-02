@@ -29,6 +29,7 @@ export default function App() {
         status: data.status,
         confidence: data.confidence,
         estimatedDelay: data.estimated_delay,
+        prescriptions: data.prescriptions || [], // 👈 Backend se aane wali prescriptive recommendations
       });
     } catch (err) {
       setError('Backend connection error. Make sure FastAPI server is running.');
@@ -77,19 +78,62 @@ export default function App() {
         {error && <div style={{ color: '#EF4444', fontSize: '13px', marginTop: '16px' }}>{error}</div>}
 
         {result && (
-          <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
-              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Risk Status</span>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#10B981', marginTop: '6px' }}>{result.status}</div>
+          <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
+            {/* Prediction Metric Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
+                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Risk Status</span>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#10B981', marginTop: '6px' }}>{result.status}</div>
+              </div>
+              <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
+                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Prediction Score</span>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginTop: '6px' }}>{result.confidence}</div>
+              </div>
+              <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
+                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Estimated Delay</span>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginTop: '6px' }}>{result.estimatedDelay}</div>
+              </div>
             </div>
-            <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
-              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Prediction Score</span>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginTop: '6px' }}>{result.confidence}</div>
-            </div>
-            <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
-              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Estimated Delay</span>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginTop: '6px' }}>{result.estimatedDelay}</div>
-            </div>
+
+            {/* 🤖 Prescriptive Recommendations Panel */}
+            {result.prescriptions && result.prescriptions.length > 0 && (
+              <div style={{ marginTop: '24px', backgroundColor: '#0B0F17', padding: '20px', borderRadius: '12px', border: '1px solid #1E293B' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>⚡</span>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#38BDF8', margin: 0 }}>Prescriptive Optimization Actions</h3>
+                </div>
+                <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 16px 0' }}>
+                  AI-driven operational mitigations mapped to predicted delay risk:
+                </p>
+
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {result.prescriptions.map((rec, index) => (
+                    <div 
+                      key={index} 
+                      style={{ 
+                        backgroundColor: '#161C28', 
+                        padding: '12px 16px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #1E293B',
+                        borderLeft: '4px solid #38BDF8',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>{rec.action_id}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 500, color: '#F8FAFC', marginTop: '2px' }}>{rec.title}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Cost: {rec.cost_impact}</div>
+                        <div style={{ fontSize: '12px', color: '#38BDF8' }}>Saved: {rec.time_saved}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
