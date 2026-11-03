@@ -29,7 +29,7 @@ export default function App() {
         status: data.status,
         confidence: data.confidence,
         estimatedDelay: data.estimated_delay,
-        prescriptions: data.prescriptions || [], // 👈 Backend se aane wali prescriptive recommendations
+        prescriptions: data.prescriptions || [], 
       });
     } catch (err) {
       setError('Backend connection error. Make sure FastAPI server is running.');
@@ -40,7 +40,7 @@ export default function App() {
 
   return (
     <div style={{ backgroundColor: '#0B0F17', color: '#F8FAFC', minHeight: '100vh', padding: '40px 20px', fontFamily: 'system-ui, sans-serif' }}>
-      {/* Header */}
+      {/* header */}
       <div style={{ maxWidth: '900px', margin: '0 auto 40px auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1E293B', paddingBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ backgroundColor: '#2563EB', color: '#fff', width: '36px', height: '36px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>SP</div>
@@ -55,7 +55,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main Container */}
+      {/* main container */}
       <div style={{ maxWidth: '700px', margin: '0 auto', backgroundColor: '#161C28', border: '1px solid #1E293B', borderRadius: '16px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 500, margin: '0 0 8px 0' }}>Shipment Delay Risk Lookup</h2>
         <p style={{ fontSize: '14px', color: '#94A3B8', margin: '0 0 24px 0' }}>Enter a tracking ID to calculate real-time delay probabilities via FastAPI.</p>
@@ -79,7 +79,7 @@ export default function App() {
 
         {result && (
           <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
-            {/* Prediction Metric Cards */}
+            {/* prediction metric cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
               <div style={{ backgroundColor: '#0B0F17', padding: '16px', borderRadius: '12px', border: '1px solid #1E293B' }}>
                 <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Risk Status</span>
@@ -95,7 +95,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🤖 Prescriptive Recommendations Panel */}
+            {/* 🤖 prescriptive recommendations panel */}
             {result.prescriptions && result.prescriptions.length > 0 && (
               <div style={{ marginTop: '24px', backgroundColor: '#0B0F17', padding: '20px', borderRadius: '12px', border: '1px solid #1E293B' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>

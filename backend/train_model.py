@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 print("Training lightweight XGBoost Supply Chain model...")
 
-# 1. Create synthetic operational training data
+# we Create synthetic operational training data
 np.random.seed(42)
 n_samples = 1000
 
@@ -17,17 +17,17 @@ data = {
 }
 
 df = pd.DataFrame(data)
-# Target: 1 if delayed, 0 if optimal
+# Target-1 if delayed, 0 if optimal
 df['is_delayed'] = ((df['distance_km'] > 1000) & (df['weather_severity'] > 0)) | (df['traffic_index'] > 75)
 df['is_delayed'] = df['is_delayed'].astype(int)
 
 X = df[['distance_km', 'weather_severity', 'traffic_index', 'previous_delays']]
 y = df['is_delayed']
 
-# 2. Train XGBoost Model
+#Train XGBoost Model
 model = xgb.XGBClassifier(n_estimators=50, max_depth=3, learning_rate=0.1)
 model.fit(X, y)
 
-# 3. Save model to JSON file
+# Save model to JSON file
 model.save_model("xgb_model.json")
 print("XGBoost model successfully trained and saved as 'xgb_model.json'!")

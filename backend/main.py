@@ -124,6 +124,7 @@ def predict_delay(data: PredictionRequest):
         "prescriptions": prescriptions,
         "message": "Prescriptive optimization pipeline executed successfully"
     }
+ HEAD
 import sqlite3
 from typing import Optional
 
@@ -179,3 +180,5 @@ def execute_decision(data: DecisionRequest):
             "status": "error",
             "message": str(e)
         }
+
+ 4c7e1539716a8c7a29634df09f3ddf1f5eecba5f
