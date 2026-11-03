@@ -7,7 +7,7 @@ import os
 
 app = FastAPI(title="SupplyPrescript Analytics API", version="2.0")
 
-# Enable CORS for Frontend connection
+# enabling CORS for frontend connection
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load the trained XGBoost model if available
+# load the trained XGBoost model if available
 model = xgb.XGBClassifier()
 model_path = "xgb_model.json"
 
@@ -30,7 +30,7 @@ else:
 class PredictionRequest(BaseModel):
     shipment_id: str
 
-# --- Optimization Audit: Hard Budget Constraint Guard ---
+# Optimization Audit: Hard Budget Constraint Guard
 MAX_ALLOWED_BUDGET = 500.0  # Defined hard budget limit in USD
 
 def audit_prescription_budget(prescriptions: list) -> list:
@@ -76,7 +76,7 @@ def predict_delay(data: PredictionRequest):
     confidence_pct = f"{round(delay_prob * 100 if delay_prob > 0.4 else (1 - delay_prob) * 100, 1)}%"
     est_delay_hours = f"{int(delay_prob * 48)} Hours" if delay_prob > 0.4 else "0 Hours"
 
-    # Week 2 Prescriptive Recommendations (Generated if risk detected)
+
     prescriptions = []
     if status == "Delayed Risk":
         prescriptions = [
@@ -113,7 +113,7 @@ def predict_delay(data: PredictionRequest):
             }
         ]
 
-    # Apply Optimization Audit Guard
+    # apply optimization audit guard
     prescriptions = audit_prescription_budget(prescriptions)
 
     return {
@@ -124,3 +124,58 @@ def predict_delay(data: PredictionRequest):
         "prescriptions": prescriptions,
         "message": "Prescriptive optimization pipeline executed successfully"
     }
+import sqlite3
+from typing import Optional
+
+# writeback check: operational database setup
+DB_FILE = "supply_operations.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS decision_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shipment_id TEXT,
+            action_id TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# initialize database on startup
+init_db()
+
+class DecisionRequest(BaseModel):
+    shipment_id: str
+    action_id: str
+
+@app.post("/execute-decision")
+def execute_decision(data: DecisionRequest):
+    """
+    Write-Back Check: Performs an INSERT statement into the operational 
+    database when a prescriptive decision is executed from the UI.
+    """
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO decision_logs (shipment_id, action_id, status) VALUES (?, ?, ?)",
+            (data.shipment_id, data.action_id, "Executed Successfully")
+        )
+        conn.commit()
+        conn.close()
+        
+        return {
+            "status": "success",
+            "message": f"Action {data.action_id} for shipment {data.shipment_id} written back to operational DB.",
+            "shipment_id": data.shipment_id,
+            "action_id": data.action_id
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
