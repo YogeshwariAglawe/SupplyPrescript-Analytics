@@ -182,3 +182,31 @@ def execute_decision(data: DecisionRequest):
         }
 
  4c7e1539716a8c7a29634df09f3ddf1f5eecba5f
+# decision analytics- fetch logged decisions
+@app.get("/decision-logs")
+def get_decision_logs():
+    """
+    Retrieves all recorded prescriptive decisions from the operational database
+    for auditing and analytics visual dashboard.
+    """
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row  # enables dictionary-like access
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM decision_logs ORDER BY timestamp DESC LIMIT 50")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        logs = [dict(row) for row in rows]
+        
+        return {
+            "status": "success",
+            "total_records": len(logs),
+            "data": logs
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
