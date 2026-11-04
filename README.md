@@ -113,6 +113,5 @@ SupplyPrescript has successfully implemented its core predictive model, FastAPI 
 
 4. Deploy frontend to Vercel/Netlify and backend to Render/Railway
 
-## Author
-Developed as an advanced enterprise-grade supply chain analytics project focused on combining predictive machine learning with automated prescriptive operational recovery.
+
 
