@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import xgboost as xgb
 import numpy as np
 import os
+import sqlite3
+from typing import Optional
 
 app = FastAPI(title="SupplyPrescript Analytics API", version="2.0")
 
@@ -76,7 +78,6 @@ def predict_delay(data: PredictionRequest):
     confidence_pct = f"{round(delay_prob * 100 if delay_prob > 0.4 else (1 - delay_prob) * 100, 1)}%"
     est_delay_hours = f"{int(delay_prob * 48)} Hours" if delay_prob > 0.4 else "0 Hours"
 
-
     prescriptions = []
     if status == "Delayed Risk":
         prescriptions = [
@@ -124,9 +125,6 @@ def predict_delay(data: PredictionRequest):
         "prescriptions": prescriptions,
         "message": "Prescriptive optimization pipeline executed successfully"
     }
- HEAD
-import sqlite3
-from typing import Optional
 
 # writeback check: operational database setup
 DB_FILE = "supply_operations.db"
@@ -181,7 +179,6 @@ def execute_decision(data: DecisionRequest):
             "message": str(e)
         }
 
- 4c7e1539716a8c7a29634df09f3ddf1f5eecba5f
 # decision analytics- fetch logged decisions
 @app.get("/decision-logs")
 def get_decision_logs():
