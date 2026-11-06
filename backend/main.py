@@ -137,47 +137,43 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             shipment_id TEXT,
             action_id TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            status TEXT
+            action_type TEXT,
+            status TEXT,
+            budget_used REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
     conn.commit()
     conn.close()
 
-# initialize database on startup
 init_db()
 
+
 class DecisionRequest(BaseModel):
-    shipment_id: str
-    action_id: str
+    shipment_id: Optional[str] = "SP-00001"
+    action_id: Optional[str] = "REC-01"
+    action_type: Optional[str] = "Optimize Inventory & Route"
+    status: Optional[str] = "Executed"
+    budget_used: Optional[float] = 0.0
 
 @app.post("/execute-decision")
 def execute_decision(data: DecisionRequest):
-    """
-    Write-Back Check: Performs an INSERT statement into the operational 
-    database when a prescriptive decision is executed from the UI.
-    """
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO decision_logs (shipment_id, action_id, status) VALUES (?, ?, ?)",
-            (data.shipment_id, data.action_id, "Executed Successfully")
+            "INSERT INTO decision_logs (shipment_id, action_id, action_type, status, budget_used) VALUES (?, ?, ?, ?, ?)",
+            (data.shipment_id, data.action_id, data.action_type, data.status, data.budget_used)
         )
         conn.commit()
         conn.close()
         
         return {
             "status": "success",
-            "message": f"Action {data.action_id} for shipment {data.shipment_id} written back to operational DB.",
-            "shipment_id": data.shipment_id,
-            "action_id": data.action_id
+            "message": f"Action written back to operational DB."
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}
 
 # decision analytics- fetch logged decisions
 @app.get("/decision-logs")

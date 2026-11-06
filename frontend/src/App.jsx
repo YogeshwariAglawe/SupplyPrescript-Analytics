@@ -1,10 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [shipmentId, setShipmentId] = useState('SP-00001');
   const [loading, setLoading] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [logs, setLogs] = useState([]);
+
+  // Audit logs fetch karne ke liye function
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/decision-logs');
+      if (response.ok) {
+        const res = await response.json();
+        setLogs(res.data || []); // Fixed: accessing res.data array
+      }
+    } catch (err) {
+      console.error("Error fetching decision logs:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
 
   const handlePredict = async (e) => {
     e.preventDefault();
@@ -35,6 +54,43 @@ export default function App() {
       setError('Backend connection error. Make sure FastAPI server is running.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Execute Decision & Database Write-back trigger (Cleaned cost parsing)
+  const handleExecuteDecision = async (actionTitle, costImpact) => {
+    setExecuting(true);
+    try {
+      const numericCost = typeof costImpact === 'number' 
+        ? costImpact 
+        : parseFloat(String(costImpact).replace(/[^0-9.]/g, '')) || 0.0;
+
+      const payload = {
+        shipment_id: shipmentId || "SP-00001",
+        action_id: "REC-00",
+        action_type: actionTitle || "Standard Route Operating Optimally",
+        status: "Executed Successfully",
+        budget_used: numericCost
+      };
+
+      const response = await fetch('http://localhost:8000/execute-decision', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        alert("Decision successfully executed and logged to SQLite database!");
+        fetchLogs(); 
+      } else {
+        alert("Failed to execute decision on backend.");
+      }
+    } catch (err) {
+      console.error("Error executing decision:", err);
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -95,7 +151,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🤖 prescriptive recommendations panel */}
+            {/* 🤖 prescriptive recommendations panel with Execute Button */}
             {result.prescriptions && result.prescriptions.length > 0 && (
               <div style={{ marginTop: '24px', backgroundColor: '#0B0F17', padding: '20px', borderRadius: '12px', border: '1px solid #1E293B' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -124,11 +180,15 @@ export default function App() {
                       <div>
                         <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>{rec.action_id}</div>
                         <div style={{ fontSize: '14px', fontWeight: 500, color: '#F8FAFC', marginTop: '2px' }}>{rec.title}</div>
+                        <div style={{ fontSize: '12px', color: '#10B981', marginTop: '4px' }}>Cost: {rec.cost_impact} | Saved: {rec.time_saved}</div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Cost: {rec.cost_impact}</div>
-                        <div style={{ fontSize: '12px', color: '#38BDF8' }}>Saved: {rec.time_saved}</div>
-                      </div>
+                      <button
+                        onClick={() => handleExecuteDecision(rec.title, rec.cost_impact)}
+                        disabled={executing}
+                        style={{ backgroundColor: '#10B981', color: '#0B0F17', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}
+                      >
+                        {executing ? 'Executing...' : 'Execute Decision'}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -136,6 +196,42 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* 📋 Audit Logs Table Section */}
+        <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#F8FAFC', margin: '0 0 12px 0' }}>Operational Audit Logs</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #334155', color: '#94A3B8' }}>
+                  <th style={{ padding: '8px' }}>ID</th>
+                  <th style={{ padding: '8px' }}>Action Type</th>
+                  <th style={{ padding: '8px' }}>Status</th>
+                  <th style={{ padding: '8px' }}>Budget</th>
+                  <th style={{ padding: '8px' }}>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.length > 0 ? (
+                  logs.map((log) => (
+                    <tr key={log.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '8px' }}>{log.id}</td>
+                      <td style={{ padding: '8px' }}>{log.action_type}</td>
+                      <td style={{ padding: '8px', color: '#10B981' }}>{log.status}</td>
+                      <td style={{ padding: '8px' }}>${log.budget_used}</td>
+                      <td style={{ padding: '8px', color: '#64748B' }}>{log.timestamp}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" style={{ padding: '16px', textAlign: 'center', color: '#64748B' }}>No audit logs recorded yet. Click 'Execute Decision' to log an action.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   );
