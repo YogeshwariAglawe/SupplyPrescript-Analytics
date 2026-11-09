@@ -155,7 +155,7 @@ export default function App() {
             {result.prescriptions && result.prescriptions.length > 0 && (
               <div style={{ marginTop: '24px', backgroundColor: '#0B0F17', padding: '20px', borderRadius: '12px', border: '1px solid #1E293B' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '16px' }}>⚡</span>
+                  <span style={{ fontSize: '16px' }}></span>
                   <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#38BDF8', margin: 0 }}>Prescriptive Optimization Actions</h3>
                 </div>
                 <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 16px 0' }}>
