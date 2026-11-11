@@ -127,7 +127,7 @@ def predict_delay(data: PredictionRequest):
         "message": "Prescriptive optimization pipeline executed successfully"
     }
 
-# Mid-Project Review: SciPy Solver Budget Constraint Proof Endpoint
+
 @app.get("/verify-budget-solver")
 def verify_budget_solver():
     """
