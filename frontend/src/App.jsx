@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DecisionRoiSection from './DecisionRoiSection';
 
 export default function App() {
   const [shipmentId, setShipmentId] = useState('SP-00001');
@@ -7,6 +8,8 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [roiData, setRoiData] = useState(null);
+  const [roiLoading, setRoiLoading] = useState(false);
 
   // Audit logs fetch karne ke liye function
   const fetchLogs = async () => {
@@ -21,8 +24,24 @@ export default function App() {
     }
   };
 
+  const fetchRoiAnalytics = async () => {
+    setRoiLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/evaluate-decisions');
+      if (response.ok) {
+        const res = await response.json();
+        setRoiData(res);
+      }
+    } catch (err) {
+      console.error("Error fetching ROI analytics:", err);
+    } finally {
+      setRoiLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
+    fetchRoiAnalytics();
   }, []);
 
   const handlePredict = async (e) => {
@@ -198,6 +217,8 @@ export default function App() {
         )}
 
         {/* 📋 Audit Logs Table Section */}
+      <DecisionRoiSection roiData={roiData} loading={roiLoading} onRefresh={fetchRoiAnalytics} />
+
         <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#F8FAFC', margin: '0 0 12px 0' }}>Operational Audit Logs</h3>
           <div style={{ overflowX: 'auto' }}>
