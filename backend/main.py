@@ -5,6 +5,7 @@ import xgboost as xgb
 import numpy as np
 import os
 import sqlite3
+from evaluate_decisions import evaluate_closed_loop
 from typing import Optional
 from scipy.optimize import linprog
 
@@ -33,7 +34,7 @@ else:
 class PredictionRequest(BaseModel):
     shipment_id: str
 
-# Optimization Audit: Hard Budget Constraint Guard
+# Optimization Audit- Hard Budget Constraint Guard
 MAX_ALLOWED_BUDGET = 500.0  # Defined hard budget limit in USD
 
 def audit_prescription_budget(prescriptions: list) -> list:
@@ -229,4 +230,24 @@ def get_decision_logs():
         return {
             "status": "error",
             "message": str(e)
+        }
+
+# closed-loop ROI analytics - evaluate predicted vs actual outcomes
+@app.get("/evaluate-decisions")
+def evaluate_decisions_endpoint():
+    """
+    Evaluates logged prescriptive decisions against actual historical outcomes
+    to return cost variance and Decision ROI metrics.
+    """
+    try:
+        db_target = DB_FILE if "DB_FILE" in globals() else "supply_operations.db"
+        result = evaluate_closed_loop(db_path=db_target)
+        return {
+            "status": "success",
+            **result,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
         }
