@@ -10,6 +10,7 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [roiData, setRoiData] = useState(null);
   const [roiLoading, setRoiLoading] = useState(false);
+  const [roiError, setRoiError] = useState("");
 
   // Audit logs fetch karne ke liye function
   const fetchLogs = async () => {
@@ -26,14 +27,18 @@ export default function App() {
 
   const fetchRoiAnalytics = async () => {
     setRoiLoading(true);
+    setRoiError("");
     try {
       const response = await fetch('http://localhost:8000/evaluate-decisions');
       if (response.ok) {
         const res = await response.json();
         setRoiData(res);
+      } else {
+        setRoiError("Unable to load ROI evaluation metrics.");
       }
     } catch (err) {
       console.error("Error fetching ROI analytics:", err);
+      setRoiError("Backend unreachable while loading ROI metrics.");
     } finally {
       setRoiLoading(false);
     }
@@ -217,7 +222,7 @@ export default function App() {
         )}
 
         {/* 📋 Audit Logs Table Section */}
-      <DecisionRoiSection roiData={roiData} loading={roiLoading} onRefresh={fetchRoiAnalytics} />
+      <DecisionRoiSection roiData={roiData} loading={roiLoading} error={roiError} onRefresh={fetchRoiAnalytics} />
 
         <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#F8FAFC', margin: '0 0 12px 0' }}>Operational Audit Logs</h3>

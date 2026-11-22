@@ -1,17 +1,20 @@
 ﻿import React from 'react';
 
-export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
+export default function DecisionRoiSection({ roiData, loading, error, onRefresh }) {
   const summary = roiData?.summary;
-  const evaluations = roiData?.evaluations || [];
+  const evaluations = Array.isArray(roiData?.evaluations) ? roiData.evaluations : [];
+  const pendingCount = Number(summary?.pending_evaluations || 0);
 
   const formatMoney = (val) => {
     const num = Number(val || 0);
+    if (!Number.isFinite(num)) return '$0.0';
     const sign = num < 0 ? '-' : '';
     return `${sign}$${Math.abs(num).toFixed(1)}`;
   };
 
   const formatVariance = (val) => {
     const num = Number(val || 0);
+    if (!Number.isFinite(num)) return '$0.0';
     if (num > 0) return `+$${num.toFixed(1)}`;
     if (num < 0) return `-$${Math.abs(num).toFixed(1)}`;
     return '$0.0';
@@ -19,13 +22,14 @@ export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
 
   return (
     <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
         <div>
           <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#F8FAFC', margin: 0 }}>
             Decision ROI & Closed-Loop Outcomes
           </h3>
           <p style={{ fontSize: '12px', color: '#94A3B8', margin: '4px 0 0 0' }}>
             Predicted vs. actual mitigation cost and business value against $350.0 delay baseline
+            {pendingCount > 0 ? ` • ${pendingCount} pending evaluation` : ''}
           </p>
         </div>
         {onRefresh && (
@@ -42,6 +46,7 @@ export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
               fontSize: '12px',
               fontWeight: 500,
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
             }}
           >
             {loading ? 'Refreshing...' : 'Refresh ROI'}
@@ -55,13 +60,13 @@ export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
             <div style={{ backgroundColor: '#0B0F17', padding: '14px', borderRadius: '10px', border: '1px solid #1E293B' }}>
               <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Decision ROI</span>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#38BDF8', marginTop: '6px' }}>
-                {summary.decision_roi_pct}%
+                {summary.decision_roi_pct ?? 0}%
               </div>
             </div>
             <div style={{ backgroundColor: '#0B0F17', padding: '14px', borderRadius: '10px', border: '1px solid #1E293B' }}>
               <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Positive Rate</span>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#10B981', marginTop: '6px' }}>
-                {summary.positive_outcome_rate_pct}% ({summary.positive_outcomes}/{summary.total_evaluated})
+                {summary.positive_outcome_rate_pct ?? 0}% ({summary.positive_outcomes ?? 0}/{summary.total_evaluated ?? 0})
               </div>
             </div>
             <div style={{ backgroundColor: '#0B0F17', padding: '14px', borderRadius: '10px', border: '1px solid #1E293B' }}>
@@ -92,8 +97,8 @@ export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
               </thead>
               <tbody>
                 {evaluations.length > 0 ? (
-                  evaluations.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                  evaluations.map((item, idx) => (
+                    <tr key={item.id ?? idx} style={{ borderBottom: '1px solid #1E293B' }}>
                       <td style={{ padding: '8px', fontWeight: 500 }}>{item.shipment_id}</td>
                       <td style={{ padding: '8px' }}>{item.action_type}</td>
                       <td style={{ padding: '8px' }}>{formatMoney(item.predicted_cost)}</td>
@@ -109,7 +114,9 @@ export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
                 ) : (
                   <tr>
                     <td colSpan="6" style={{ padding: '16px', textAlign: 'center', color: '#64748B' }}>
-                      No evaluated closed-loop records available yet.
+                      {pendingCount > 0
+                        ? `${pendingCount} decision(s) pending outcome evaluation.`
+                        : 'No evaluated closed-loop records available yet.'}
                     </td>
                   </tr>
                 )}
@@ -118,8 +125,10 @@ export default function DecisionRoiSection({ roiData, loading, onRefresh }) {
           </div>
         </>
       ) : (
-        <div style={{ padding: '14px', backgroundColor: '#0B0F17', borderRadius: '10px', border: '1px solid #1E293B', color: '#64748B', fontSize: '13px' }}>
-          {loading ? 'Loading ROI analytics...' : 'ROI metrics unavailable. Make sure FastAPI server is running on port 8000.'}
+        <div style={{ padding: '14px', backgroundColor: '#0B0F17', borderRadius: '10px', border: '1px solid #1E293B', color: error ? '#EF4444' : '#64748B', fontSize: '13px' }}>
+          {loading
+            ? 'Loading ROI analytics...'
+            : error || 'ROI metrics unavailable. Make sure FastAPI server is running on port 8000.'}
         </div>
       )}
     </div>

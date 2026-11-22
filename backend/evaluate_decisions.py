@@ -1,14 +1,28 @@
-﻿import sqlite3
+﻿from pathlib import Path
+import sqlite3
 from typing import Dict, Any, List
 
-DB_PATH = "supply_operations.db"
+DEFAULT_DB_PATH = str(Path(__file__).resolve().with_name("supply_operations.db"))
 DELAY_PENALTY_BASELINE = 350.0
 
 
-def evaluate_closed_loop(db_path: str = DB_PATH) -> Dict[str, Any]:
-    conn = sqlite3.connect(db_path)
+def evaluate_closed_loop(db_path: str = DEFAULT_DB_PATH) -> Dict[str, Any]:
+    resolved_path = Path(db_path)
+    if not resolved_path.exists():
+        fallback = Path(__file__).resolve().with_name(Path(db_path).name)
+        if fallback.exists():
+            resolved_path = fallback
+
+    conn = sqlite3.connect(str(resolved_path))
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
+
+    pending_row = cur.execute("""
+        SELECT COUNT(*) AS cnt
+        FROM decision_logs
+        WHERE actual_cost IS NULL
+    """).fetchone()
+    pending_count = int(pending_row["cnt"] or 0) if pending_row else 0
 
     rows = cur.execute("""
         SELECT id, shipment_id, action_id, action_type, status,
@@ -29,7 +43,8 @@ def evaluate_closed_loop(db_path: str = DB_PATH) -> Dict[str, Any]:
         predicted = float(row["budget_used"] or 0.0)
         actual = float(row["actual_cost"] or 0.0)
         variance = round(actual - predicted, 2)
-        outcome = row["outcome_status"] or "Pending"
+        raw_outcome = (row["outcome_status"] or "").strip()
+        outcome = raw_outcome if raw_outcome else "Pending Evaluation"
         is_positive = outcome.lower().startswith("positive")
 
         if is_positive:
@@ -47,16 +62,16 @@ def evaluate_closed_loop(db_path: str = DB_PATH) -> Dict[str, Any]:
 
         evaluations.append({
             "id": row["id"],
-            "shipment_id": row["shipment_id"],
-            "action_id": row["action_id"],
-            "action_type": row["action_type"],
+            "shipment_id": row["shipment_id"] or "N/A",
+            "action_id": row["action_id"] or "N/A",
+            "action_type": row["action_type"] or "Unknown Action",
             "predicted_cost": predicted,
             "actual_cost": actual,
             "cost_variance": variance,
             "net_benefit": net_benefit,
             "outcome_status": outcome,
             "positive_outcome": is_positive,
-            "timestamp": row["timestamp"],
+            "timestamp": row["timestamp"] or "",
         })
 
     total_evaluated = len(evaluations)
@@ -66,6 +81,7 @@ def evaluate_closed_loop(db_path: str = DB_PATH) -> Dict[str, Any]:
     return {
         "summary": {
             "total_evaluated": total_evaluated,
+            "pending_evaluations": pending_count,
             "positive_outcomes": positive_count,
             "positive_outcome_rate_pct": positive_rate,
             "total_predicted_cost": round(total_predicted, 2),
