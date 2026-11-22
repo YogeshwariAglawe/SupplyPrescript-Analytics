@@ -12,7 +12,7 @@ export default function App() {
   const [roiLoading, setRoiLoading] = useState(false);
   const [roiError, setRoiError] = useState("");
 
-  // Audit logs fetch karne ke liye function
+  
   const fetchLogs = async () => {
     try {
       const response = await fetch('http://localhost:8000/decision-logs');
