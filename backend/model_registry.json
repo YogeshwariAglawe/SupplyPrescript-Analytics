@@ -1,0 +1,16 @@
+{
+  "current_version": "v1.1.0",
+  "last_retrained_at": "2026-11-23T16:28:53.332005+00:00",
+  "last_accuracy": 0.9951,
+  "last_trigger_reason": "CLI closed-loop check",
+  "retrain_count": 1,
+  "history": [
+    {
+      "version": "v1.1.0",
+      "retrained_at": "2026-11-23T16:28:53.332005+00:00",
+      "accuracy": 0.9951,
+      "training_rows": 1015,
+      "trigger_reason": "CLI closed-loop check"
+    }
+  ]
+}
