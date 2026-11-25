@@ -1,5 +1,6 @@
-﻿from fastapi import FastAPI
+﻿from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import xgboost as xgb
 import numpy as np
@@ -24,7 +25,13 @@ retrain_pipeline.DB_PATH = BASE_DIR / "supply_operations.db"
 retrain_pipeline.MODEL_PATH = MODEL_PATH
 retrain_pipeline.REGISTRY_PATH = BASE_DIR / "model_registry.json"
 
-app = FastAPI(title="SupplyPrescript Analytics API", version="2.0")
+app = FastAPI(
+    title="SupplyPrescript API Studio",
+    version="2.0",
+    description="Closed-Loop Prescriptive Analytics, HITL Audits & Continuous Retraining API",
+    docs_url=None,
+    redoc_url=None,
+)
 
 # enabling CORS for frontend connection
 app.add_middleware(
@@ -34,6 +41,276 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- CUSTOM API STUDIO (/docs) START ---
+@app.get("/docs", include_in_schema=False)
+def custom_api_studio():
+    html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SupplyPrescript • API Studio</title>
+  <style>
+    :root {
+      --bg: #090D16;
+      --panel: #111827;
+      --panel-2: #162032;
+      --border: #233044;
+      --text: #F1F5F9;
+      --muted: #94A3B8;
+      --teal: #3F9AAE;
+      --mint: #79C9C5;
+      --sand: #FFE2AF;
+      --coral: #F96E5B;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(63, 154, 174, 0.16), transparent 36%),
+        radial-gradient(circle at 88% 12%, rgba(249, 110, 91, 0.12), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal), var(--coral));
+      box-shadow: 0 0 14px rgba(121, 201, 197, 0.6);
+    }
+    .brand-title { font-weight: 700; font-size: 16px; letter-spacing: 0.2px; }
+    .badge {
+      font-size: 11px; padding: 4px 10px; border-radius: 999px;
+      background: rgba(121, 201, 197, 0.14); color: var(--mint);
+      border: 1px solid rgba(121, 201, 197, 0.35); font-weight: 600;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      padding: 22px 28px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .sidebar, .workspace {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .section-label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); margin-bottom: 10px; font-weight: 700;
+    }
+    .ep-btn {
+      width: 100%; text-align: left; background: var(--panel-2);
+      border: 1px solid transparent; border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+      color: var(--text); display: flex; align-items: center; gap: 10px;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .ep-btn:hover { transform: translateX(2px); border-color: rgba(121, 201, 197, 0.4); }
+    .ep-btn.active {
+      border-color: var(--teal);
+      background: linear-gradient(90deg, rgba(63, 154, 174, 0.2), rgba(22, 32, 50, 0.95));
+    }
+    .method {
+      font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px;
+      min-width: 46px; text-align: center;
+    }
+    .m-get { background: rgba(121, 201, 197, 0.18); color: var(--mint); }
+    .m-post { background: rgba(249, 110, 91, 0.2); color: var(--coral); }
+    .ep-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .ep-header {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; padding-bottom: 14px;
+      border-bottom: 1px solid var(--border); margin-bottom: 16px;
+    }
+    .run-btn {
+      background: linear-gradient(135deg, var(--teal), #2C7A8C);
+      color: #fff; border: none; border-radius: 9px;
+      padding: 9px 16px; font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+    .run-btn:hover { filter: brightness(1.08); }
+    textarea {
+      width: 100%; min-height: 150px; background: var(--bg); color: var(--sand);
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+      margin-bottom: 14px;
+    }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; overflow-x: auto; font-size: 12px; color: var(--mint);
+      margin: 0; min-height: 180px;
+    }
+    .meta-row { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="brand-title">SupplyPrescript API Studio</span>
+      <span class="badge">Custom Explorer v2.0</span>
+    </div>
+    <a href="/openapi.json" style="color:var(--sand);font-size:12px;text-decoration:none;">OpenAPI Spec →</a>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="section-label">Endpoints</div>
+      <div id="endpoint-list"></div>
+    </aside>
+
+    <main class="workspace">
+      <div class="ep-header">
+        <div>
+          <div id="active-title" style="font-size:17px;font-weight:700;">Select an endpoint</div>
+          <div id="active-desc" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+        </div>
+        <button class="run-btn" id="send-btn" onclick="sendRequest()">Send Request</button>
+      </div>
+
+      <div id="body-wrap" style="display:none;">
+        <div class="section-label">Request JSON Body</div>
+        <textarea id="req-body"></textarea>
+      </div>
+
+      <div class="meta-row">
+        <span id="resp-status">Status: —</span>
+        <span id="resp-time">Latency: —</span>
+      </div>
+      <div class="section-label">Response Payload</div>
+      <pre id="resp-output">Click "Send Request" to inspect live output.</pre>
+    </main>
+  </div>
+
+  <script>
+    let endpoints = [];
+    let selected = null;
+    const sampleBodies = {
+      "/predict": JSON.stringify({
+        shipment_id: "SP-00001",
+        distance_km: 850,
+        weather_severity: 0.4,
+        traffic_index: 0.65,
+        warehouse_load: 0.72,
+        budget_limit: 5000
+      }, null, 2),
+      "/execute-decision": JSON.stringify({
+        shipment_id: "SP-00001",
+        action_id: "ACT-01",
+        action_type: "Expedite Route",
+        status: "Approved & Executed",
+        budget_used: 1800
+      }, null, 2),
+      "/retrain-model": JSON.stringify({
+        trigger_reason: "API Studio check",
+        force: false
+      }, null, 2)
+    };
+
+    async function initStudio() {
+      const res = await fetch("/openapi.json");
+      const spec = await res.json();
+      const paths = spec.paths || {};
+      endpoints = [];
+      for (const [path, methods] of Object.entries(paths)) {
+        for (const [method, info] of Object.entries(methods)) {
+          const m = method.toUpperCase();
+          if (["GET", "POST", "PUT", "PATCH", "DELETE"].includes(m)) {
+            endpoints.push({
+              path,
+              method: m,
+              summary: info.summary || path,
+              description: info.description || ""
+            });
+          }
+        }
+      }
+      const listEl = document.getElementById("endpoint-list");
+      listEl.innerHTML = "";
+      endpoints.forEach((ep, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "ep-btn";
+        btn.id = "ep-" + idx;
+        const mClass = ep.method === "POST" ? "m-post" : "m-get";
+        btn.innerHTML = `<span class="method ${mClass}">${ep.method}</span><span class="ep-path">${ep.path}</span>`;
+        btn.onclick = () => selectEndpoint(idx);
+        listEl.appendChild(btn);
+      });
+      if (endpoints.length > 0) selectEndpoint(0);
+    }
+
+    function selectEndpoint(idx) {
+      selected = endpoints[idx];
+      document.querySelectorAll(".ep-btn").forEach((b, i) => {
+        b.classList.toggle("active", i === idx);
+      });
+      document.getElementById("active-title").textContent = `${selected.method} ${selected.path}`;
+      document.getElementById("active-desc").textContent = selected.summary;
+      const bodyWrap = document.getElementById("body-wrap");
+      const reqArea = document.getElementById("req-body");
+      if (selected.method === "POST" || selected.method === "PUT" || selected.method === "PATCH") {
+        bodyWrap.style.display = "block";
+        reqArea.value = sampleBodies[selected.path] || "{}";
+      } else {
+        bodyWrap.style.display = "none";
+      }
+    }
+
+    async function sendRequest() {
+      if (!selected) return;
+      const out = document.getElementById("resp-output");
+      const statusEl = document.getElementById("resp-status");
+      const timeEl = document.getElementById("resp-time");
+      const opts = { method: selected.method, headers: {} };
+      if (selected.method === "POST" || selected.method === "PUT" || selected.method === "PATCH") {
+        opts.headers["Content-Type"] = "application/json";
+        opts.body = document.getElementById("req-body").value;
+      }
+      const start = performance.now();
+      try {
+        const res = await fetch(selected.path, opts);
+        const elapsed = Math.round(performance.now() - start);
+        statusEl.textContent = `Status: ${res.status} ${res.statusText}`;
+        timeEl.textContent = `Latency: ${elapsed} ms`;
+        const text = await res.text();
+        try {
+          out.textContent = JSON.stringify(JSON.parse(text), null, 2);
+        } catch {
+          out.textContent = text;
+        }
+      } catch (err) {
+        statusEl.textContent = "Status: Network Error";
+        out.textContent = String(err);
+      }
+    }
+
+    initStudio();
+  </script>
+</body>
+</html>'''
+    return HTMLResponse(content=html, status_code=200)
+# --- CUSTOM API STUDIO (/docs) END ---
 
 # load the trained XGBoost model if available
 model = None
@@ -218,7 +495,7 @@ class DecisionRequest(BaseModel):
 
 
 @app.post("/execute-decision")
-def execute_decision(data: DecisionRequest):
+def execute_decision(data: DecisionRequest, background_tasks: BackgroundTasks):
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -228,6 +505,8 @@ def execute_decision(data: DecisionRequest):
         )
         conn.commit()
         conn.close()
+
+        background_tasks.add_task(_auto_retrain_if_needed, DB_FILE)
 
         return {
             "status": "success",
@@ -265,6 +544,20 @@ def get_decision_logs():
             "status": "error",
             "message": str(e),
         }
+
+
+def _auto_retrain_if_needed(db_file: str) -> None:
+    try:
+        summary = get_discrepancy_summary(Path(db_file))
+        if summary.get("should_retrain"):
+            result = retrain_xgboost_model(
+                trigger_reason=f"Auto discrepancy trigger ({summary.get('reason', 'threshold met')})",
+                force=False,
+            )
+            if result.get("retrained"):
+                load_active_model()
+    except Exception as exc:
+        print(f"Background auto-retrain check skipped/failed: {exc}")
 
 
 # closed-loop ROI analytics - evaluate predicted vs actual outcomes
