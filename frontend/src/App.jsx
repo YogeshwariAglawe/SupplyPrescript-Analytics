@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import DecisionRoiSection from './DecisionRoiSection';
+import ModelRegistryCard from './ModelRegistryCard';
 
 export default function App() {
   const [shipmentId, setShipmentId] = useState('SP-00001');
@@ -306,6 +307,9 @@ export default function App() {
 
         {/* ROI & Closed-Loop Section */}
         <DecisionRoiSection roiData={roiData} loading={roiLoading} error={roiError} onRefresh={fetchRoiAnalytics} />
+
+        {/* Model Registry & Retraining Card */}
+        <ModelRegistryCard />
 
         {/* Audit Logs Table Section */}
         <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #1E293B' }}>
