@@ -1,4 +1,5 @@
 ﻿from fastapi import BackgroundTasks, FastAPI
+from scipy_optimizer import optimize_prescriptions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -429,12 +430,21 @@ def predict_delay(data: PredictionRequest):
     # apply optimization audit guard
     prescriptions = audit_prescription_budget(prescriptions)
 
+    raw_delay_hrs = float(int(delay_prob * 48)) if status == "Delayed Risk" else 0.0
+    prescriptions, optimization_summary = optimize_prescriptions(
+        prescriptions=prescriptions,
+        delay_prob=delay_prob,
+        est_delay_hours=raw_delay_hrs,
+        max_budget=MAX_ALLOWED_BUDGET,
+    )
+
     return {
         "shipment_id": data.shipment_id,
         "status": status,
         "confidence": confidence_pct,
         "estimated_delay": est_delay_hours,
         "prescriptions": prescriptions,
+        "optimization_summary": optimization_summary,
         "message": "Prescriptive optimization pipeline executed successfully",
     }
 
@@ -492,26 +502,69 @@ class DecisionRequest(BaseModel):
     action_type: Optional[str] = "Optimize Inventory & Route"
     status: Optional[str] = "Executed"
     budget_used: Optional[float] = 0.0
+    actual_cost: Optional[float] = None
+    outcome_status: Optional[str] = None
+    operator_id: Optional[str] = None
+    override_reason: Optional[str] = None
+
+
+def _persist_decision_writeback(data: DecisionRequest, background_tasks: BackgroundTasks, source: str = "ui") -> dict:
+    budget_val = float(data.budget_used or 0.0)
+    within_budget = budget_val <= MAX_ALLOWED_BUDGET
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO decision_logs (
+            shipment_id, action_id, action_type, status, budget_used, actual_cost, outcome_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data.shipment_id,
+            data.action_id,
+            data.action_type,
+            data.status,
+            budget_val,
+            data.actual_cost,
+            data.outcome_status,
+        ),
+    )
+    decision_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    background_tasks.add_task(_auto_retrain_if_needed, DB_FILE)
+
+    return {
+        "status": "success",
+        "source": source,
+        "decision_id": decision_id,
+        "shipment_id": data.shipment_id,
+        "action_id": data.action_id,
+        "decision_status": data.status,
+        "budget_used": round(budget_val, 2),
+        "max_allowed_budget": MAX_ALLOWED_BUDGET,
+        "within_budget": within_budget,
+        "retrain_check_queued": True,
+        "message": "Action written back to operational DB.",
+    }
 
 
 @app.post("/execute-decision")
 def execute_decision(data: DecisionRequest, background_tasks: BackgroundTasks):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO decision_logs (shipment_id, action_id, action_type, status, budget_used) VALUES (?, ?, ?, ?, ?)",
-            (data.shipment_id, data.action_id, data.action_type, data.status, data.budget_used),
-        )
-        conn.commit()
-        conn.close()
+        return _persist_decision_writeback(data, background_tasks, source="ui")
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
-        background_tasks.add_task(_auto_retrain_if_needed, DB_FILE)
 
-        return {
-            "status": "success",
-            "message": "Action written back to operational DB.",
-        }
+@app.post("/retool/write-back")
+def retool_write_back(data: DecisionRequest, background_tasks: BackgroundTasks):
+    try:
+        res = _persist_decision_writeback(data, background_tasks, source="retool")
+        res["operator_id"] = data.operator_id
+        res["override_reason"] = data.override_reason
+        return res
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
